@@ -94,15 +94,16 @@ resource "aws_iam_role_policy" "github_jobs" {
         Resource = "*"
       },
       {
+        # Buckets de datos + config: naming = ${project}-${env}-${tipo}
         Effect   = "Allow"
         Action   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject", "s3:ListBucket"]
         Resource = [
-          "arn:aws:s3:::${var.project_name}-config-${var.env}",
-          "arn:aws:s3:::${var.project_name}-config-${var.env}/*"
+          "arn:aws:s3:::${var.project_name}-${var.env}-*",
+          "arn:aws:s3:::${var.project_name}-${var.env}-*/*"
         ]
       },
       {
-        # Terraform backend: leer/escribir tfstate
+        # Terraform backend
         Effect   = "Allow"
         Action   = ["s3:GetObject", "s3:PutObject", "s3:ListBucket", "s3:GetBucketVersioning"]
         Resource = [
@@ -160,8 +161,8 @@ resource "aws_iam_role_policy" "github_monitoring" {
         Effect   = "Allow"
         Action   = ["s3:PutObject", "s3:GetObject", "s3:ListBucket"]
         Resource = [
-          "arn:aws:s3:::${var.project_name}-config-${var.env}",
-          "arn:aws:s3:::${var.project_name}-config-${var.env}/*"
+          "arn:aws:s3:::${var.project_name}-${var.env}-*",
+          "arn:aws:s3:::${var.project_name}-${var.env}-*/*"
         ]
       },
       {
