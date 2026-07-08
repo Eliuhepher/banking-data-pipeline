@@ -158,7 +158,7 @@ resource "aws_sfn_state_machine" "banking_pipeline" {
       GoldBucket         = var.gold_bucket
       ConfigBucket       = var.config_bucket
       ConfigPrefix       = "process_configs"
-      SchemaKey          = "schema/transacciones_v1.json"
+      SchemaKey          = "schemas/transacciones_v1.json"
       RedshiftWorkgroup  = var.redshift_workgroup
       RedshiftDatabase   = var.redshift_database
       RedshiftIamRole    = var.glue_role_arn
