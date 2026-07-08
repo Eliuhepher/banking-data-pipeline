@@ -21,9 +21,7 @@ locals {
   }
 }
 
-# -------------------------------------------------------------------------
 # S3 — Medallion Architecture: Bronze / Silver / Gold / Config
-# -------------------------------------------------------------------------
 resource "aws_s3_bucket" "bronze" {
   bucket = "${local.prefix}-bronze"
   tags   = merge(local.common_tags, { Layer = "bronze" })
@@ -49,9 +47,7 @@ resource "aws_s3_bucket_versioning" "config" {
   versioning_configuration { status = "Enabled" }
 }
 
-# -------------------------------------------------------------------------
 # VPC — red privada para Redshift Serverless
-# -------------------------------------------------------------------------
 resource "aws_vpc" "main" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_support   = true
@@ -94,10 +90,8 @@ resource "aws_security_group" "redshift" {
   tags = local.common_tags
 }
 
-# -------------------------------------------------------------------------
+
 # Secrets Manager — credenciales admin de Redshift Serverless
-# El valor real se setea manualmente o via CLI después del apply inicial.
-# -------------------------------------------------------------------------
 resource "aws_secretsmanager_secret" "redshift_admin" {
   name                    = "${local.prefix}/redshift/admin"
   recovery_window_in_days = 7
@@ -113,11 +107,9 @@ resource "aws_secretsmanager_secret_version" "redshift_admin" {
   })
 }
 
-# -------------------------------------------------------------------------
+
 # Redshift Serverless
-# Sin nodos fijos: paga por RPU-hora solo durante queries activos.
-# base_capacity = 8 RPU (mínimo recomendado para cargas ETL batch)
-# -------------------------------------------------------------------------
+# 8 RPU
 resource "aws_redshiftserverless_namespace" "main" {
   namespace_name      = "${local.prefix}-ns"
   db_name             = var.redshift_database
@@ -138,11 +130,10 @@ resource "aws_redshiftserverless_workgroup" "main" {
   tags                = local.common_tags
 }
 
-# -------------------------------------------------------------------------
 # IAM Role — Glue Jobs
 # Los jobs usan este rol para acceder a S3, Redshift Data API y CloudWatch.
 # No necesitan claves: el rol se asume automáticamente dentro del job.
-# -------------------------------------------------------------------------
+
 resource "aws_iam_role" "glue" {
   name = "${local.prefix}-glue-role"
   assume_role_policy = jsonencode({

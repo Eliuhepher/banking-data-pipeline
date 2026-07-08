@@ -2,7 +2,10 @@ variable "project_name"            { type = string }
 variable "env"                      { type = string }
 variable "aws_region"               { type = string }
 variable "aws_account_id"           { type = string }
-variable "redshift_database"        { type = string; default = "banking" }
+variable "redshift_database"        { 
+  type = string 
+  default = "banking" 
+}
 variable "redshift_admin_password"  {
   type      = string
   sensitive = true
