@@ -14,7 +14,7 @@ provider "aws" {
 
 locals {
   prefix        = "${var.project_name}-${var.env}"
-  scripts_s3    = "s3://${var.config_bucket}/glue_jobs"
+  scripts_s3    = "s3://${var.config_bucket}/glue_scripts"
   lib_zip_s3    = "${local.scripts_s3}/lib.zip"
   handlers_zip_s3 = "${local.scripts_s3}/handlers.zip"
   common_args = {

@@ -185,17 +185,17 @@ Ejecutar los scripts DDL en orden contra el workgroup de Redshift Serverless (de
 ```bash
 # Usando Redshift Data API vía CLI
 aws redshift-data execute-statement \
-  --workgroup-name banking-pipeline-wg-dev \
+  --workgroup-name banking-pipeline-dev-wg \
   --database banking \
   --sql "$(cat sql/ddl/01_control.sql)"
 
 aws redshift-data execute-statement \
-  --workgroup-name banking-pipeline-wg-dev \
+  --workgroup-name banking-pipeline-dev-wg \
   --database banking \
   --sql "$(cat sql/ddl/02_dimensions.sql)"
 
 aws redshift-data execute-statement \
-  --workgroup-name banking-pipeline-wg-dev \
+  --workgroup-name banking-pipeline-dev-wg \
   --database banking \
   --sql "$(cat sql/ddl/03_fact.sql)"
 ```
