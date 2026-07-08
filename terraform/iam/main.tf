@@ -94,6 +94,24 @@ resource "aws_iam_role_policy" "github_jobs" {
         Resource = "*"
       },
       {
+        Effect = "Allow"
+        Action = [
+          "iam:CreateRole", "iam:DeleteRole", "iam:GetRole",
+          "iam:PutRolePolicy", "iam:DeleteRolePolicy", "iam:GetRolePolicy",
+          "iam:ListRolePolicies", "iam:ListAttachedRolePolicies",
+          "iam:AttachRolePolicy", "iam:DetachRolePolicy", "iam:PassRole"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "iam:CreatePolicy", "iam:DeletePolicy", "iam:GetPolicy",
+          "iam:GetPolicyVersion", "iam:ListPolicyVersions"
+        ]
+        Resource = "arn:aws:iam::${var.aws_account_id}:policy/${var.project_name}-*"
+      },
+      {
         # Buckets de datos + config: naming = ${project}-${env}-${tipo}
         Effect   = "Allow"
         Action   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject", "s3:ListBucket"]
