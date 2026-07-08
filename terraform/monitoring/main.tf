@@ -56,35 +56,35 @@ resource "aws_iam_role" "lambda" {
   })
 }
 
+data "aws_iam_policy_document" "lambda" {
+  statement {
+    effect    = "Allow"
+    actions   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
+    resources = ["arn:aws:logs:*:*:*"]
+  }
+  statement {
+    effect    = "Allow"
+    actions   = ["s3:GetObject"]
+    resources = ["arn:aws:s3:::${local.prefix}-bronze/*"]
+  }
+  statement {
+    effect    = "Allow"
+    actions   = ["sns:Publish"]
+    resources = [aws_sns_topic.alerts.arn]
+  }
+  dynamic "statement" {
+    for_each = var.step_functions_arn != "" ? [var.step_functions_arn] : []
+    content {
+      effect    = "Allow"
+      actions   = ["states:StartExecution"]
+      resources = [statement.value]
+    }
+  }
+}
+
 resource "aws_iam_role_policy" "lambda" {
-  role = aws_iam_role.lambda.name
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = concat(
-      [
-        {
-          Effect   = "Allow"
-          Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
-          Resource = "arn:aws:logs:*:*:*"
-        },
-        {
-          Effect   = "Allow"
-          Action   = ["s3:HeadObject", "s3:GetObject"]
-          Resource = ["arn:aws:s3:::${local.prefix}-bronze/*"]
-        },
-        {
-          Effect   = "Allow"
-          Action   = ["sns:Publish"]
-          Resource = aws_sns_topic.alerts.arn
-        }
-      ],
-      var.step_functions_arn != "" ? [{
-        Effect   = "Allow"
-        Action   = ["states:StartExecution"]
-        Resource = var.step_functions_arn
-      }] : []
-    )
-  })
+  role   = aws_iam_role.lambda.name
+  policy = data.aws_iam_policy_document.lambda.json
 }
 
 # Lambda — file_checker
