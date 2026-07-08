@@ -67,7 +67,7 @@ resource "aws_glue_job" "silver" {
     "--BRONZE_BUCKET"      = var.bronze_bucket
     "--SILVER_BUCKET"      = var.silver_bucket
     "--SCHEMA_BUCKET"      = var.config_bucket
-    "--SCHEMA_KEY"         = "schema/transacciones_v1.json"
+    "--SCHEMA_KEY"         = "schemas/transacciones_v1.json"
     "--REDSHIFT_WORKGROUP" = var.redshift_workgroup
     "--REDSHIFT_DATABASE"  = var.redshift_database
   })
