@@ -36,15 +36,11 @@ jobs:
 
       - name: Package lib/
         run: |
-          cd glue_jobs
-          zip -r ../lib.zip lib/
-          cd ..
+          cd glue_jobs/lib && zip -r ../../lib.zip .
 
       - name: Package handlers/
         run: |
-          cd glue_jobs
-          zip -r ../handlers.zip handlers/
-          cd ..
+          cd glue_jobs/handlers && zip -r ../../handlers.zip .
 
       # --- Upload artifacts to S3 config bucket ---
       # Solo en push a main para evitar subir en PRs
