@@ -14,18 +14,14 @@ provider "aws" {
 
 # -------------------------------------------------------------------------
 # OIDC Identity Provider — GitHub Actions
-# Permite que los workflows de GitHub obtengan credenciales temporales via
-# STS sin almacenar AWS_ACCESS_KEY_ID ni AWS_SECRET_ACCESS_KEY en ningún lugar.
+# Creado en terraform/bootstrap. Aquí solo se lee el ARN via data source.
 # -------------------------------------------------------------------------
-resource "aws_iam_openid_connect_provider" "github" {
-  url             = "https://token.actions.githubusercontent.com"
-  client_id_list  = ["sts.amazonaws.com"]
-  # thumbprint de la CA raíz de GitHub Actions (verificar periódicamente)
-  thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1"]
+data "aws_iam_openid_connect_provider" "github" {
+  url = "https://token.actions.githubusercontent.com"
 }
 
 locals {
-  oidc_provider_arn = aws_iam_openid_connect_provider.github.arn
+  oidc_provider_arn = data.aws_iam_openid_connect_provider.github.arn
   # scope a repo + branch main: un PR de fork no puede asumir el rol
   oidc_subject = "repo:${var.github_org}/${var.github_repo}:ref:refs/heads/main"
 
