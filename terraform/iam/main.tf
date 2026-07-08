@@ -102,6 +102,15 @@ resource "aws_iam_role_policy" "github_jobs" {
         ]
       },
       {
+        # Terraform backend: leer/escribir tfstate
+        Effect   = "Allow"
+        Action   = ["s3:GetObject", "s3:PutObject", "s3:ListBucket", "s3:GetBucketVersioning"]
+        Resource = [
+          "arn:aws:s3:::${var.project_name}-tf-state",
+          "arn:aws:s3:::${var.project_name}-tf-state/*"
+        ]
+      },
+      {
         Effect   = "Allow"
         Action   = ["iam:PassRole"]
         Resource = "arn:aws:iam::${var.aws_account_id}:role/${var.project_name}-*"
@@ -140,6 +149,15 @@ resource "aws_iam_role_policy" "github_monitoring" {
         Resource = [
           "arn:aws:s3:::${var.project_name}-config-${var.env}",
           "arn:aws:s3:::${var.project_name}-config-${var.env}/*"
+        ]
+      },
+      {
+        # Terraform backend: leer/escribir tfstate
+        Effect   = "Allow"
+        Action   = ["s3:GetObject", "s3:PutObject", "s3:ListBucket", "s3:GetBucketVersioning"]
+        Resource = [
+          "arn:aws:s3:::${var.project_name}-tf-state",
+          "arn:aws:s3:::${var.project_name}-tf-state/*"
         ]
       }
     ]
