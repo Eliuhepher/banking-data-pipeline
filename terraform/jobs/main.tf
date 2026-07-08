@@ -25,9 +25,8 @@ locals {
   }
 }
 
-# -------------------------------------------------------------------------
+
 # Glue Job — ingest (Python Shell: solo copia S3→Bronze, no necesita Spark)
-# -------------------------------------------------------------------------
 resource "aws_glue_job" "ingest" {
   name         = "${local.prefix}-ingest-job"
   role_arn     = var.glue_role_arn
@@ -47,9 +46,8 @@ resource "aws_glue_job" "ingest" {
   })
 }
 
-# -------------------------------------------------------------------------
+
 # Glue Job — bronze_to_silver (PySpark)
-# -------------------------------------------------------------------------
 resource "aws_glue_job" "silver" {
   name             = "${local.prefix}-silver-job"
   role_arn         = var.glue_role_arn
@@ -75,9 +73,8 @@ resource "aws_glue_job" "silver" {
   })
 }
 
-# -------------------------------------------------------------------------
+
 # Glue Job — gold_job (PySpark genérico — recibe --PROCESS_TYPE)
-# -------------------------------------------------------------------------
 resource "aws_glue_job" "gold" {
   name             = "${local.prefix}-gold-job"
   role_arn         = var.glue_role_arn
@@ -104,9 +101,8 @@ resource "aws_glue_job" "gold" {
   })
 }
 
-# -------------------------------------------------------------------------
+
 # IAM Role — Step Functions
-# -------------------------------------------------------------------------
 resource "aws_iam_role" "step_functions" {
   name = "${local.prefix}-sfn-role"
   assume_role_policy = jsonencode({
@@ -145,10 +141,8 @@ resource "aws_iam_role_policy" "step_functions" {
   })
 }
 
-# -------------------------------------------------------------------------
 # Step Functions State Machine
 # El ASL usa templatefile para sustituir nombres de jobs y buckets en build time.
-# -------------------------------------------------------------------------
 resource "aws_sfn_state_machine" "banking_pipeline" {
   name     = "${local.prefix}-pipeline"
   role_arn = aws_iam_role.step_functions.arn
