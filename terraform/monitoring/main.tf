@@ -13,7 +13,9 @@ provider "aws" {
 }
 
 locals {
-  prefix = "${var.project_name}-${var.env}"
+  prefix   = "${var.project_name}-${var.env}"
+  # ARN construido desde variables — valor conocido en plan, evita dependencia circular
+  sns_arn  = "arn:aws:sns:${var.aws_region}:${var.aws_account_id}:${var.project_name}-${var.env}-alerts"
 }
 
 # SNS Topic — canal central de alertas
@@ -70,7 +72,7 @@ data "aws_iam_policy_document" "lambda" {
   statement {
     effect    = "Allow"
     actions   = ["sns:Publish"]
-    resources = [aws_sns_topic.alerts.arn]
+    resources = [local.sns_arn]
   }
   dynamic "statement" {
     for_each = var.step_functions_arn != "" ? [var.step_functions_arn] : []
