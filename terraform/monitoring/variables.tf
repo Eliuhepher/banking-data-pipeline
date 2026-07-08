@@ -15,6 +15,12 @@ variable "slack_channel"      {
     default = "#data-alerts"
 }
 
-variable "step_functions_arn" { type = string; default = "" }
-variable "alert_email"        { type = string; default = "" }
+variable "step_functions_arn" { 
+    type = string
+    default = "" 
+}
+variable "alert_email"        { 
+    type = string
+    default = "" 
+}
 variable "tf_state_bucket"    { type = string }
