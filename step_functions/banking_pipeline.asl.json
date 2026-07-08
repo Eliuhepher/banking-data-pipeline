@@ -1,0 +1,171 @@
+{
+  "Comment": "Banking Data Pipeline — Medallion Architecture (Bronze → Silver → Gold). Dimensiones en paralelo via Map State, Hechos secuenciales después. ${GlueIngestJobName} -> ${GlueSilverJobName} -> DimensionesMap[3] -> HechosMap[1].",
+  "StartAt": "IngestBronze",
+  "States": {
+    "IngestBronze": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:startJobRun.sync",
+      "Parameters": {
+        "JobName": "${GlueIngestJobName}",
+        "Arguments": {
+          "--JOB_NAME":       "${GlueIngestJobName}",
+          "--SOURCE_NAME.$":  "$.source_name",
+          "--INPUT_S3_URI.$": "$.input_s3_uri",
+          "--BRONZE_BUCKET":  "${BronzeBucket}",
+          "--EXECUTION_DATE.$": "$.execution_date"
+        }
+      },
+      "ResultPath": null,
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "NotifyFailure"
+        }
+      ],
+      "Next": "BronzeToSilver"
+    },
+
+    "BronzeToSilver": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:startJobRun.sync",
+      "Parameters": {
+        "JobName": "${GlueSilverJobName}",
+        "Arguments": {
+          "--JOB_NAME":            "${GlueSilverJobName}",
+          "--SOURCE_NAME.$":       "$.source_name",
+          "--BRONZE_BUCKET":       "${BronzeBucket}",
+          "--SILVER_BUCKET":       "${SilverBucket}",
+          "--SCHEMA_BUCKET":       "${ConfigBucket}",
+          "--SCHEMA_KEY":          "${SchemaKey}",
+          "--EXECUTION_DATE.$":    "$.execution_date",
+          "--REDSHIFT_WORKGROUP":  "${RedshiftWorkgroup}",
+          "--REDSHIFT_DATABASE":   "${RedshiftDatabase}"
+        }
+      },
+      "ResultPath": null,
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "NotifyFailure"
+        }
+      ],
+      "Next": "DimensionesMap"
+    },
+
+    "DimensionesMap": {
+      "Type": "Map",
+      "Comment": "Carga dim_cliente, dim_producto y dim_tiempo en paralelo (MaxConcurrency 3).",
+      "ItemsPath": "$.dimension_configs",
+      "Parameters": {
+        "process_type.$":   "$$.Map.Item.Value.process_type",
+        "execution_date.$": "$$.Execution.Input.execution_date"
+      },
+      "MaxConcurrency": 3,
+      "Iterator": {
+        "StartAt": "RunGoldDimJob",
+        "States": {
+          "RunGoldDimJob": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::glue:startJobRun.sync",
+            "Parameters": {
+              "JobName": "${GlueGoldJobName}",
+              "Arguments": {
+                "--JOB_NAME":           "${GlueGoldJobName}",
+                "--PROCESS_TYPE.$":     "$.process_type",
+                "--SILVER_BUCKET":      "${SilverBucket}",
+                "--GOLD_BUCKET":        "${GoldBucket}",
+                "--CONFIG_BUCKET":      "${ConfigBucket}",
+                "--CONFIG_PREFIX":      "${ConfigPrefix}",
+                "--EXECUTION_DATE.$":   "$.execution_date",
+                "--REDSHIFT_WORKGROUP": "${RedshiftWorkgroup}",
+                "--REDSHIFT_DATABASE":  "${RedshiftDatabase}",
+                "--REDSHIFT_IAM_ROLE":  "${RedshiftIamRole}",
+                "--AWS_REGION":         "${AwsRegion}"
+              }
+            },
+            "End": true
+          }
+        }
+      },
+      "ResultPath": null,
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "NotifyFailure"
+        }
+      ],
+      "Next": "HechosMap"
+    },
+
+    "HechosMap": {
+      "Type": "Map",
+      "Comment": "Carga fact_transacciones. Se ejecuta después de dimensiones para garantizar que los SKs existen.",
+      "ItemsPath": "$.hechos_configs",
+      "Parameters": {
+        "process_type.$":   "$$.Map.Item.Value.process_type",
+        "execution_date.$": "$$.Execution.Input.execution_date"
+      },
+      "MaxConcurrency": 1,
+      "Iterator": {
+        "StartAt": "RunGoldHechoJob",
+        "States": {
+          "RunGoldHechoJob": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::glue:startJobRun.sync",
+            "Parameters": {
+              "JobName": "${GlueGoldJobName}",
+              "Arguments": {
+                "--JOB_NAME":           "${GlueGoldJobName}",
+                "--PROCESS_TYPE.$":     "$.process_type",
+                "--SILVER_BUCKET":      "${SilverBucket}",
+                "--GOLD_BUCKET":        "${GoldBucket}",
+                "--CONFIG_BUCKET":      "${ConfigBucket}",
+                "--CONFIG_PREFIX":      "${ConfigPrefix}",
+                "--EXECUTION_DATE.$":   "$.execution_date",
+                "--REDSHIFT_WORKGROUP": "${RedshiftWorkgroup}",
+                "--REDSHIFT_DATABASE":  "${RedshiftDatabase}",
+                "--REDSHIFT_IAM_ROLE":  "${RedshiftIamRole}",
+                "--AWS_REGION":         "${AwsRegion}"
+              }
+            },
+            "End": true
+          }
+        }
+      },
+      "ResultPath": null,
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "NotifyFailure"
+        }
+      ],
+      "Next": "PipelineSuccess"
+    },
+
+    "NotifyFailure": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "${SnsTopicArn}",
+        "Subject.$": "States.Format('[${Env}] Fallo en banking-pipeline — {}', $$.StateMachine.Name)",
+        "Message.$": "States.Format('Estado: FAILED\nEjecución: {}\nFecha: {}\nError:\n{}', $$.Execution.Name, $$.Execution.Input.execution_date, States.JsonToString($.error))"
+      },
+      "ResultPath": null,
+      "Next": "PipelineFailed"
+    },
+
+    "PipelineSuccess": {
+      "Type": "Succeed"
+    },
+
+    "PipelineFailed": {
+      "Type": "Fail",
+      "Error": "PipelineError",
+      "Cause": "Ver notificación SNS para detalles del error"
+    }
+  }
+}

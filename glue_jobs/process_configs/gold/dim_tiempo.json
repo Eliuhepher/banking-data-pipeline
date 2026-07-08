@@ -1,0 +1,45 @@
+{
+  "process_type": "dim_tiempo",
+  "domain": "dimensiones",
+  "description": "Dimension tiempo. Genera atributos de fecha a partir de fecha_hora y los inserta si la fecha es nueva.",
+  "source": {
+    "type": "silver_parquet",
+    "source_name": "transacciones",
+    "partition_by_execution_date": true
+  },
+  "transformations": [
+    {
+      "type": "select",
+      "columns": ["fecha_hora"]
+    },
+    {
+      "type": "to_date",
+      "column": "fecha_hora"
+    },
+    {
+      "type": "rename",
+      "from": "fecha_hora",
+      "to": "fecha"
+    },
+    {
+      "type": "generate_date_parts",
+      "from_column": "fecha"
+    },
+    {
+      "type": "add_date_key",
+      "from_column": "fecha",
+      "output_col": "sk_tiempo"
+    },
+    {
+      "type": "deduplicate",
+      "keys": ["sk_tiempo"]
+    }
+  ],
+  "target": {
+    "staging_table": "dw.stg_dim_tiempo",
+    "gold_path": "stg_dim_tiempo",
+    "sql_after_copy": [
+      "INSERT INTO dw.dim_tiempo (sk_tiempo, fecha, anio, mes, dia, trimestre, nombre_mes, dia_semana, es_fin_de_semana) SELECT stg.sk_tiempo, stg.fecha, stg.anio, stg.mes, stg.dia, stg.trimestre, stg.nombre_mes, stg.dia_semana, stg.es_fin_de_semana FROM dw.stg_dim_tiempo stg WHERE NOT EXISTS (SELECT 1 FROM dw.dim_tiempo t WHERE t.sk_tiempo = stg.sk_tiempo)"
+    ]
+  }
+}

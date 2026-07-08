@@ -1,0 +1,27 @@
+{
+  "process_type": "dim_producto",
+  "domain": "dimensiones",
+  "description": "Dimension producto. Inserta solo tipos de producto nuevos (sk es IDENTITY en Redshift).",
+  "source": {
+    "type": "silver_parquet",
+    "source_name": "transacciones",
+    "partition_by_execution_date": true
+  },
+  "transformations": [
+    {
+      "type": "select",
+      "columns": ["tipo_de_producto"]
+    },
+    {
+      "type": "deduplicate",
+      "keys": ["tipo_de_producto"]
+    }
+  ],
+  "target": {
+    "staging_table": "dw.stg_dim_producto",
+    "gold_path": "stg_dim_producto",
+    "sql_after_copy": [
+      "INSERT INTO dw.dim_producto (tipo_de_producto) SELECT DISTINCT stg.tipo_de_producto FROM dw.stg_dim_producto stg WHERE NOT EXISTS (SELECT 1 FROM dw.dim_producto p WHERE p.tipo_de_producto = stg.tipo_de_producto)"
+    ]
+  }
+}

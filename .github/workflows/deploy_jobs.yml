@@ -1,0 +1,103 @@
+name: Deploy Jobs (Glue + Step Functions)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'terraform/jobs/**'
+      - 'terraform/_globals/**'
+      - 'glue_jobs/**'
+      - 'step_functions/**'
+  pull_request:
+    paths:
+      - 'terraform/jobs/**'
+      - 'glue_jobs/**'
+      - 'step_functions/**'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  package-and-deploy:
+    name: Package Glue scripts + Terraform Jobs
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/banking-pipeline-github-jobs-${{ vars.ENV }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      # --- Packaging ---
+
+      - name: Package lib/
+        run: |
+          cd glue_jobs
+          zip -r ../lib.zip lib/
+          cd ..
+
+      - name: Package handlers/
+        run: |
+          cd glue_jobs
+          zip -r ../handlers.zip handlers/
+          cd ..
+
+      # --- Upload artifacts to S3 config bucket ---
+      # Solo en push a main para evitar subir en PRs
+      - name: Upload Glue scripts and zips to S3
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          CONFIG_BUCKET="${{ vars.CONFIG_BUCKET }}"
+
+          # scripts
+          aws s3 cp glue_jobs/ingest.py          s3://${CONFIG_BUCKET}/glue_scripts/ingest.py
+          aws s3 cp glue_jobs/bronze_to_silver.py s3://${CONFIG_BUCKET}/glue_scripts/bronze_to_silver.py
+          aws s3 cp glue_jobs/gold_job.py         s3://${CONFIG_BUCKET}/glue_scripts/gold_job.py
+
+          # libs
+          aws s3 cp lib.zip      s3://${CONFIG_BUCKET}/glue_scripts/lib.zip
+          aws s3 cp handlers.zip s3://${CONFIG_BUCKET}/glue_scripts/handlers.zip
+
+          # schemas y process configs
+          aws s3 sync glue_jobs/schema/          s3://${CONFIG_BUCKET}/schemas/
+          aws s3 sync glue_jobs/process_configs/ s3://${CONFIG_BUCKET}/process_configs/
+
+      # --- Terraform ---
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.7.0"
+
+      - name: Terraform Init
+        working-directory: terraform/jobs
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -backend-config="region=${{ vars.AWS_REGION }}"
+
+      - name: Terraform Plan
+        working-directory: terraform/jobs
+        run: |
+          terraform plan \
+            -var="env=${{ vars.ENV }}" \
+            -var="aws_account_id=${{ vars.AWS_ACCOUNT_ID }}" \
+            -var="aws_region=${{ vars.AWS_REGION }}" \
+            -var="tf_state_bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -var="config_bucket=${{ vars.CONFIG_BUCKET }}" \
+            -var="bronze_bucket=${{ vars.BRONZE_BUCKET }}" \
+            -var="silver_bucket=${{ vars.SILVER_BUCKET }}" \
+            -var="gold_bucket=${{ vars.GOLD_BUCKET }}" \
+            -var="glue_role_arn=${{ vars.GLUE_ROLE_ARN }}" \
+            -var="redshift_workgroup=${{ vars.REDSHIFT_WORKGROUP }}" \
+            -var="redshift_database=${{ vars.REDSHIFT_DATABASE }}" \
+            -var="sns_topic_arn=${{ vars.SNS_TOPIC_ARN }}" \
+            -out=tfplan
+
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        working-directory: terraform/jobs
+        run: terraform apply -auto-approve tfplan

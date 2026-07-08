@@ -1,0 +1,53 @@
+{
+  "process_type": "dim_cliente",
+  "domain": "dimensiones",
+  "description": "Dimension cliente con SCD Tipo 2. Cierra registros cambiados y abre nuevos.",
+  "source": {
+    "type": "silver_parquet",
+    "source_name": "transacciones",
+    "partition_by_execution_date": true
+  },
+  "transformations": [
+    {
+      "type": "select",
+      "columns": [
+        "tipo_de_identificacion",
+        "numero_de_identificacion",
+        "nombres",
+        "ciudad",
+        "direccion_cliente",
+        "telefono_cliente",
+        "correo_cliente",
+        "fecha_de_nacimiento",
+        "reporte_centrales_riesgo",
+        "monto_reporte_riesgo",
+        "tiempo_mora_dias"
+      ]
+    },
+    {
+      "type": "deduplicate",
+      "keys": ["tipo_de_identificacion", "numero_de_identificacion"]
+    },
+    {
+      "type": "add_hash",
+      "columns": [
+        "nombres", "ciudad", "direccion_cliente", "telefono_cliente",
+        "correo_cliente", "fecha_de_nacimiento",
+        "reporte_centrales_riesgo", "monto_reporte_riesgo", "tiempo_mora_dias"
+      ],
+      "output_col": "row_hash"
+    },
+    {
+      "type": "add_execution_timestamp",
+      "output_col": "fecha_inicio"
+    }
+  ],
+  "target": {
+    "staging_table": "dw.stg_dim_cliente",
+    "gold_path": "stg_dim_cliente",
+    "sql_after_copy": [
+      "UPDATE dw.dim_cliente dc SET fecha_fin = stg.fecha_inicio - INTERVAL '1 second', es_activo = FALSE FROM dw.stg_dim_cliente stg WHERE dc.numero_de_identificacion = stg.numero_de_identificacion AND dc.tipo_de_identificacion = stg.tipo_de_identificacion AND dc.es_activo = TRUE AND dc.row_hash != stg.row_hash",
+      "INSERT INTO dw.dim_cliente (tipo_de_identificacion, numero_de_identificacion, nombres, ciudad, direccion_cliente, telefono_cliente, correo_cliente, fecha_de_nacimiento, reporte_centrales_riesgo, monto_reporte_riesgo, tiempo_mora_dias, row_hash, fecha_inicio, fecha_fin, es_activo) SELECT stg.tipo_de_identificacion, stg.numero_de_identificacion, stg.nombres, stg.ciudad, stg.direccion_cliente, stg.telefono_cliente, stg.correo_cliente, stg.fecha_de_nacimiento, stg.reporte_centrales_riesgo, stg.monto_reporte_riesgo, stg.tiempo_mora_dias, stg.row_hash, stg.fecha_inicio, NULL, TRUE FROM dw.stg_dim_cliente stg WHERE NOT EXISTS (SELECT 1 FROM dw.dim_cliente dc WHERE dc.numero_de_identificacion = stg.numero_de_identificacion AND dc.tipo_de_identificacion = stg.tipo_de_identificacion AND dc.es_activo = TRUE AND dc.row_hash = stg.row_hash)"
+    ]
+  }
+}

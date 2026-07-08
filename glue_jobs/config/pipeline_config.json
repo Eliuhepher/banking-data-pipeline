@@ -1,0 +1,42 @@
+{
+  "version": "2.0.0",
+  "step_functions": {
+    "sf_ingestion": {
+      "description": "Aterriza el archivo fuente y transforma Bronze a Silver",
+      "jobs_sequence": ["ingest", "silver_job"],
+      "trigger": "EventBridge 08:30 via file_checker Lambda"
+    },
+    "sf_dimensiones": {
+      "description": "Carga paralela de todas las dimensiones via Map State",
+      "depends_on": "sf_ingestion",
+      "map_state": {
+        "process_types": ["dim_cliente", "dim_producto", "dim_tiempo"],
+        "max_concurrency": 3,
+        "glue_job": "banking-gold-job"
+      }
+    },
+    "sf_hechos": {
+      "description": "Carga de tablas de hechos. Espera sf_dimensiones para garantizar SKs disponibles.",
+      "depends_on": "sf_dimensiones",
+      "map_state": {
+        "process_types": ["fact_transacciones"],
+        "max_concurrency": 1,
+        "glue_job": "banking-gold-job"
+      }
+    }
+  },
+  "sources": {
+    "transacciones": {
+      "enabled": true,
+      "schema_file": "transacciones_v1.json",
+      "bronze_prefix": "transacciones",
+      "silver_prefix": "transacciones"
+    }
+  },
+  "gold_process_types": {
+    "dim_cliente":        { "domain": "dimensiones", "config": "gold/dim_cliente.json" },
+    "dim_producto":       { "domain": "dimensiones", "config": "gold/dim_producto.json" },
+    "dim_tiempo":         { "domain": "dimensiones", "config": "gold/dim_tiempo.json" },
+    "fact_transacciones": { "domain": "hechos",      "config": "gold/fact_transacciones.json" }
+  }
+}

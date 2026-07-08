@@ -1,0 +1,41 @@
+{
+  "process_type": "fact_transacciones",
+  "domain": "hechos",
+  "description": "Tabla de hechos transaccional. Filtra por watermark, carga solo registros nuevos y resuelve SKs via JOIN en Redshift.",
+  "source": {
+    "type": "silver_parquet",
+    "source_name": "transacciones",
+    "partition_by_execution_date": true
+  },
+  "watermark": {
+    "source_name": "transacciones",
+    "apply_filter": true,
+    "timestamp_column": "fecha_hora",
+    "update_after_load": true
+  },
+  "transformations": [
+    {
+      "type": "watermark_filter",
+      "column": "fecha_hora"
+    },
+    {
+      "type": "select",
+      "columns": [
+        "tipo_de_identificacion",
+        "numero_de_identificacion",
+        "tipo_de_producto",
+        "numero_de_cuenta",
+        "tipo_transaccion",
+        "monto_transaccion",
+        "fecha_hora"
+      ]
+    }
+  ],
+  "target": {
+    "staging_table": "dw.stg_fact_transacciones",
+    "gold_path": "stg_fact_transacciones",
+    "sql_after_copy": [
+      "INSERT INTO dw.fact_transacciones (sk_cliente, sk_producto, sk_tiempo, numero_de_cuenta, tipo_transaccion, monto_transaccion, fecha_hora) SELECT c.sk_cliente, p.sk_producto, CAST(TO_CHAR(f.fecha_hora, 'YYYYMMDD') AS INTEGER), f.numero_de_cuenta, f.tipo_transaccion, f.monto_transaccion, f.fecha_hora FROM dw.stg_fact_transacciones f JOIN dw.dim_cliente c ON c.numero_de_identificacion = f.numero_de_identificacion AND c.tipo_de_identificacion = f.tipo_de_identificacion AND c.es_activo = TRUE JOIN dw.dim_producto p ON p.tipo_de_producto = f.tipo_de_producto"
+    ]
+  }
+}

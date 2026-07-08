@@ -1,0 +1,38 @@
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfplan
+.terraform.lock.hcl
+# tfvars con datos sensibles van en el repo solo como ejemplo (sin passwords reales)
+# Los secrets se pasan via TF_VAR_* en GitHub Actions
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+.env
+
+# Artefactos de CI (generados en el runner, no se commitean)
+lib.zip
+handlers.zip
+file_checker.zip
+slack_notifier.zip
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# macOS
+.DS_Store
+
+# Outputs temporales de LibreOffice/scripts locales
+*.pdf
+slide-*.jpg
+slide2-*.jpg
+slide3-*.jpg
+slide4-*.jpg
+slide5-*.jpg
+deck.js

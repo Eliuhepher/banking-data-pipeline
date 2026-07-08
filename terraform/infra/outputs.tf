@@ -1,0 +1,10 @@
+output "bronze_bucket_name"         { value = aws_s3_bucket.bronze.bucket }
+output "silver_bucket_name"         { value = aws_s3_bucket.silver.bucket }
+output "gold_bucket_name"           { value = aws_s3_bucket.gold.bucket }
+output "config_bucket_name"         { value = aws_s3_bucket.config.bucket }
+output "glue_role_arn"              { value = aws_iam_role.glue.arn }
+output "redshift_workgroup_name"    { value = aws_redshiftserverless_workgroup.main.workgroup_name }
+output "redshift_database_name"     { value = var.redshift_database }
+output "redshift_secret_arn"        { value = aws_secretsmanager_secret.redshift_admin.arn }
+output "redshift_iam_role_arn"      { value = aws_iam_role.glue.arn }
+output "vpc_id"                     { value = aws_vpc.main.id }

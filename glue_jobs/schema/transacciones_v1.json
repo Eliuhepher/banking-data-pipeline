@@ -1,0 +1,139 @@
+{
+  "source_name": "transacciones",
+  "version": "1.0.0",
+  "file_format": "csv",
+  "delimiter": ",",
+  "encoding": "utf-8-sig",
+  "partition_keys": ["year", "month", "day"],
+  "primary_key": ["numero_de_cuenta", "fecha_hora"],
+  "column_renames": {
+    "tipo de identificación": "tipo_de_identificacion",
+    "número de identificación": "numero_de_identificacion",
+    "número de cuenta": "numero_de_cuenta",
+    "nombres": "nombres",
+    "tipo transacción": "tipo_transaccion",
+    "monto transacción": "monto_transaccion",
+    "tipo de producto": "tipo_de_producto",
+    "ciudad": "ciudad",
+    "fecha-hora": "fecha_hora",
+    "fecha de nacimiento": "fecha_de_nacimiento",
+    "dirección del cliente": "direccion_cliente",
+    "teléfono del cliente": "telefono_cliente",
+    "correo del cliente": "correo_cliente",
+    "reporte centrales de riesgo": "reporte_centrales_riesgo",
+    "monto reporte de central de riesgo": "monto_reporte_riesgo",
+    "tiempo en mora del reporte de riesgo": "tiempo_mora_dias"
+  },
+  "columns": [
+    {
+      "name": "tipo_de_identificacion",
+      "spark_type": "StringType",
+      "nullable": false,
+      "valid_values": ["CC", "CE", "TI", "PAS"]
+    },
+    {
+      "name": "numero_de_identificacion",
+      "spark_type": "LongType",
+      "nullable": false
+    },
+    {
+      "name": "numero_de_cuenta",
+      "spark_type": "StringType",
+      "nullable": false
+    },
+    {
+      "name": "nombres",
+      "spark_type": "StringType",
+      "nullable": false
+    },
+    {
+      "name": "tipo_transaccion",
+      "spark_type": "StringType",
+      "nullable": false,
+      "valid_values": ["COMPRA", "TRANSFERENCIA", "DEPOSITO", "PAGO", "RETIRO"]
+    },
+    {
+      "name": "monto_transaccion",
+      "spark_type": "DecimalType",
+      "nullable": false,
+      "precision": 18,
+      "scale": 2,
+      "min_value": 0
+    },
+    {
+      "name": "tipo_de_producto",
+      "spark_type": "StringType",
+      "nullable": false,
+      "valid_values": [
+        "CUENTA DE AHORROS",
+        "CUENTA CORRIENTE",
+        "TARJETA DE CRÉDITO",
+        "INVERSIÓN",
+        "PRÉSTAMO PERSONAL"
+      ]
+    },
+    {
+      "name": "ciudad",
+      "spark_type": "StringType",
+      "nullable": false
+    },
+    {
+      "name": "fecha_hora",
+      "spark_type": "TimestampType",
+      "nullable": false
+    },
+    {
+      "name": "fecha_de_nacimiento",
+      "spark_type": "TimestampType",
+      "nullable": true
+    },
+    {
+      "name": "direccion_cliente",
+      "spark_type": "StringType",
+      "nullable": true
+    },
+    {
+      "name": "telefono_cliente",
+      "spark_type": "StringType",
+      "nullable": true
+    },
+    {
+      "name": "correo_cliente",
+      "spark_type": "StringType",
+      "nullable": true
+    },
+    {
+      "name": "reporte_centrales_riesgo",
+      "spark_type": "BooleanType",
+      "nullable": false
+    },
+    {
+      "name": "monto_reporte_riesgo",
+      "spark_type": "DecimalType",
+      "nullable": true,
+      "precision": 18,
+      "scale": 2,
+      "min_value": 0
+    },
+    {
+      "name": "tiempo_mora_dias",
+      "spark_type": "IntegerType",
+      "nullable": true
+    }
+  ],
+  "normalizations": {
+    "ciudad": {
+      "MEDELLÃN": "MEDELLÍN",
+      "MEDELLIN": "MEDELLÍN",
+      "BOGOTÃ": "BOGOTÁ",
+      "BOGOTA": "BOGOTÁ"
+    }
+  },
+  "quality_rules": {
+    "min_valid_rate": 0.95,
+    "reject_on_null_pk": true,
+    "reject_date_before": "1920-01-01",
+    "reject_future_dates": true,
+    "date_columns": ["fecha_de_nacimiento"]
+  }
+}

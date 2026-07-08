@@ -1,0 +1,80 @@
+name: Deploy Monitoring (SNS + Lambda + EventBridge)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'terraform/monitoring/**'
+      - 'terraform/_globals/**'
+      - 'lambdas/**'
+  pull_request:
+    paths:
+      - 'terraform/monitoring/**'
+      - 'lambdas/**'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  package-and-deploy:
+    name: Package Lambdas + Terraform Monitoring
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/banking-pipeline-github-monitoring-${{ vars.ENV }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      # --- Packaging ---
+      # Cada Lambda se empaca por separado para deployment independiente.
+      # No se incluyen dependencias externas: ambas Lambdas usan solo stdlib + boto3 (ya en el runtime python3.12).
+
+      - name: Package file_checker Lambda
+        run: |
+          cd lambdas/file_checker
+          zip -r ../../file_checker.zip handler.py
+          cd ../..
+
+      - name: Package slack_notifier Lambda
+        run: |
+          cd lambdas/slack_notifier
+          zip -r ../../slack_notifier.zip handler.py
+          cd ../..
+
+      # --- Terraform ---
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.7.0"
+
+      - name: Terraform Init
+        working-directory: terraform/monitoring
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -backend-config="region=${{ vars.AWS_REGION }}"
+
+      - name: Terraform Plan
+        working-directory: terraform/monitoring
+        run: |
+          terraform plan \
+            -var="env=${{ vars.ENV }}" \
+            -var="aws_account_id=${{ vars.AWS_ACCOUNT_ID }}" \
+            -var="aws_region=${{ vars.AWS_REGION }}" \
+            -var="tf_state_bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -var="alert_email=${{ vars.ALERT_EMAIL }}" \
+            -var="alert_phone=${{ vars.ALERT_PHONE }}" \
+            -var="slack_channel=${{ vars.SLACK_CHANNEL }}" \
+            -var="slack_webhook_url=${{ secrets.SLACK_WEBHOOK_URL }}" \
+            -var="step_functions_arn=${{ vars.STEP_FUNCTIONS_ARN }}" \
+            -out=tfplan
+
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        working-directory: terraform/monitoring
+        run: terraform apply -auto-approve tfplan

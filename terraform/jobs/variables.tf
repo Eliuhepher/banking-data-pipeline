@@ -1,0 +1,13 @@
+variable "project_name"      { type = string }
+variable "env"               { type = string }
+variable "aws_region"        { type = string }
+variable "aws_account_id"    { type = string }
+variable "bronze_bucket"     { type = string }
+variable "silver_bucket"     { type = string }
+variable "gold_bucket"       { type = string }
+variable "config_bucket"     { type = string }
+variable "glue_role_arn"     { type = string }
+variable "redshift_workgroup" { type = string }
+variable "redshift_database"  { type = string }
+variable "sns_topic_arn"     { type = string }
+variable "tf_state_bucket"   { type = string }

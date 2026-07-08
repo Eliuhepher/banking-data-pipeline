@@ -1,0 +1,6 @@
+project_name   = "banking-pipeline"
+env            = "dev"
+aws_region     = "us-east-1"
+aws_account_id = "965085139900"
+github_org     = "Eliuhepher"
+github_repo    = "banking-data-pipeline"
