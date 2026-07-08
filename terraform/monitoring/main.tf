@@ -58,35 +58,38 @@ resource "aws_iam_role" "lambda" {
   })
 }
 
-data "aws_iam_policy_document" "lambda" {
-  statement {
-    effect    = "Allow"
-    actions   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
-    resources = ["arn:aws:logs:*:*:*"]
-  }
-  statement {
-    effect    = "Allow"
-    actions   = ["s3:GetObject"]
-    resources = ["arn:aws:s3:::${local.prefix}-bronze/*"]
-  }
-  statement {
-    effect    = "Allow"
-    actions   = ["sns:Publish"]
-    resources = [local.sns_arn]
-  }
-  dynamic "statement" {
-    for_each = var.step_functions_arn != "" ? [var.step_functions_arn] : []
-    content {
-      effect    = "Allow"
-      actions   = ["states:StartExecution"]
-      resources = [statement.value]
-    }
-  }
+resource "aws_iam_role_policy_attachment" "lambda_basic" {
+  role       = aws_iam_role.lambda.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-resource "aws_iam_role_policy" "lambda" {
-  role   = aws_iam_role.lambda.name
-  policy = data.aws_iam_policy_document.lambda.json
+resource "aws_iam_policy" "lambda_custom" {
+  name = "${local.prefix}-lambda-policy"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["s3:GetObject"]
+        Resource = "*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["sns:Publish"]
+        Resource = "*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["states:StartExecution"]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_custom" {
+  role       = aws_iam_role.lambda.name
+  policy_arn = aws_iam_policy.lambda_custom.arn
 }
 
 # Lambda — file_checker
