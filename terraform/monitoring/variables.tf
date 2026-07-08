@@ -2,8 +2,6 @@ variable "project_name"       { type = string }
 variable "env"                { type = string }
 variable "aws_region"         { type = string }
 variable "aws_account_id"     { type = string }
-variable "alert_email"        { type = string }
-
 variable "alert_phone"        { 
     type = string 
     default = "" 
@@ -17,5 +15,6 @@ variable "slack_channel"      {
     default = "#data-alerts"
 }
 
-variable "step_functions_arn" { type = string }
+variable "step_functions_arn" { type = string; default = "" }
+variable "alert_email"        { type = string; default = "" }
 variable "tf_state_bucket"    { type = string }

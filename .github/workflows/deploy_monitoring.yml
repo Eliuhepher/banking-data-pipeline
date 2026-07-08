@@ -36,15 +36,11 @@ jobs:
 
       - name: Package file_checker Lambda
         run: |
-          cd lambdas/file_checker
-          zip -r ../../file_checker.zip handler.py
-          cd ../..
+          cd lambdas/file_checker && zip handler.zip handler.py
 
       - name: Package slack_notifier Lambda
         run: |
-          cd lambdas/slack_notifier
-          zip -r ../../slack_notifier.zip handler.py
-          cd ../..
+          cd lambdas/slack_notifier && zip handler.zip handler.py
 
       # --- Terraform ---
 

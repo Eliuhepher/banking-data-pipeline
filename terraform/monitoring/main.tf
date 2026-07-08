@@ -60,28 +60,30 @@ resource "aws_iam_role_policy" "lambda" {
   role = aws_iam_role.lambda.name
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Effect   = "Allow"
-        Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
-        Resource = "arn:aws:logs:*:*:*"
-      },
-      {
-        Effect   = "Allow"
-        Action   = ["s3:HeadObject", "s3:GetObject"]
-        Resource = ["arn:aws:s3:::${local.prefix}-bronze/*"]
-      },
-      {
+    Statement = concat(
+      [
+        {
+          Effect   = "Allow"
+          Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
+          Resource = "arn:aws:logs:*:*:*"
+        },
+        {
+          Effect   = "Allow"
+          Action   = ["s3:HeadObject", "s3:GetObject"]
+          Resource = ["arn:aws:s3:::${local.prefix}-bronze/*"]
+        },
+        {
+          Effect   = "Allow"
+          Action   = ["sns:Publish"]
+          Resource = aws_sns_topic.alerts.arn
+        }
+      ],
+      var.step_functions_arn != "" ? [{
         Effect   = "Allow"
         Action   = ["states:StartExecution"]
-        Resource = var.step_functions_arn != "" ? var.step_functions_arn : "*"
-      },
-      {
-        Effect   = "Allow"
-        Action   = ["sns:Publish"]
-        Resource = aws_sns_topic.alerts.arn
-      }
-    ]
+        Resource = var.step_functions_arn
+      }] : []
+    )
   })
 }
 
@@ -93,7 +95,7 @@ resource "aws_lambda_function" "file_checker" {
   runtime       = "python3.12"
   handler       = "handler.handler"
   timeout       = 30
-  filename      = "${path.module}/../../../lambdas/file_checker/handler.zip"
+  filename      = "${path.module}/../../lambdas/file_checker/handler.zip"
 
   environment {
     variables = {
@@ -116,7 +118,7 @@ resource "aws_lambda_function" "slack_notifier" {
   runtime       = "python3.12"
   handler       = "handler.handler"
   timeout       = 15
-  filename      = "${path.module}/../../../lambdas/slack_notifier/handler.zip"
+  filename      = "${path.module}/../../lambdas/slack_notifier/handler.zip"
 
   environment {
     variables = {
