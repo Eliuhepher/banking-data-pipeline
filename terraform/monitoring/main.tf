@@ -23,6 +23,7 @@ resource "aws_sns_topic" "alerts" {
 }
 
 resource "aws_sns_topic_subscription" "email" {
+  count     = var.alert_email != "" ? 1 : 0
   topic_arn = aws_sns_topic.alerts.arn
   protocol  = "email"
   endpoint  = var.alert_email
@@ -73,7 +74,7 @@ resource "aws_iam_role_policy" "lambda" {
       {
         Effect   = "Allow"
         Action   = ["states:StartExecution"]
-        Resource = var.step_functions_arn
+        Resource = var.step_functions_arn != "" ? var.step_functions_arn : "*"
       },
       {
         Effect   = "Allow"
@@ -178,7 +179,9 @@ resource "aws_cloudwatch_event_target" "glue_failure_sns" {
 }
 
 # CloudWatch Alarm — fallos en Step Functions
+# Solo se crea si ya existe la State Machine (deploy_jobs corre después de monitoring)
 resource "aws_cloudwatch_metric_alarm" "sfn_failures" {
+  count               = var.step_functions_arn != "" ? 1 : 0
   alarm_name          = "${local.prefix}-sfn-failures"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
@@ -194,6 +197,7 @@ resource "aws_cloudwatch_metric_alarm" "sfn_failures" {
     StateMachineArn = var.step_functions_arn
   }
 }
+
 
 # CloudWatch Log Groups — retención explícita
 resource "aws_cloudwatch_log_group" "glue_silver" {
