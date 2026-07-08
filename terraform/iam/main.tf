@@ -139,8 +139,12 @@ resource "aws_iam_role_policy" "github_monitoring" {
         Resource = "*"
       },
       {
-        Effect   = "Allow"
-        Action   = ["iam:PassRole"]
+        Effect = "Allow"
+        Action = [
+          "iam:CreateRole", "iam:DeleteRole", "iam:GetRole",
+          "iam:PutRolePolicy", "iam:DeleteRolePolicy", "iam:GetRolePolicy",
+          "iam:ListRolePolicies", "iam:ListAttachedRolePolicies", "iam:PassRole"
+        ]
         Resource = "arn:aws:iam::${var.aws_account_id}:role/${var.project_name}-*"
       },
       {
