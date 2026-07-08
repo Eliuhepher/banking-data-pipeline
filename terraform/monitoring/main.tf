@@ -16,10 +16,8 @@ locals {
   prefix = "${var.project_name}-${var.env}"
 }
 
-# -------------------------------------------------------------------------
 # SNS Topic — canal central de alertas
 # Suscripciones: Email + SMS (directas) + Lambda→Slack (via código)
-# -------------------------------------------------------------------------
 resource "aws_sns_topic" "alerts" {
   name = "${local.prefix}-alerts"
 }
@@ -43,9 +41,8 @@ resource "aws_sns_topic_subscription" "slack" {
   endpoint  = aws_lambda_function.slack_notifier.arn
 }
 
-# -------------------------------------------------------------------------
+
 # IAM Role — Lambdas de monitoreo
-# -------------------------------------------------------------------------
 resource "aws_iam_role" "lambda" {
   name = "${local.prefix}-lambda-role"
   assume_role_policy = jsonencode({
@@ -87,10 +84,8 @@ resource "aws_iam_role_policy" "lambda" {
   })
 }
 
-# -------------------------------------------------------------------------
 # Lambda — file_checker
 # EventBridge → verifica S3 Bronze → dispara Step Functions o alerta SNS
-# -------------------------------------------------------------------------
 resource "aws_lambda_function" "file_checker" {
   function_name = "${local.prefix}-file-checker"
   role          = aws_iam_role.lambda.arn
@@ -111,10 +106,9 @@ resource "aws_lambda_function" "file_checker" {
   }
 }
 
-# -------------------------------------------------------------------------
+
 # Lambda — slack_notifier
 # SNS → Lambda → Slack Incoming Webhook
-# -------------------------------------------------------------------------
 resource "aws_lambda_function" "slack_notifier" {
   function_name = "${local.prefix}-slack-notifier"
   role          = aws_iam_role.lambda.arn
@@ -140,9 +134,7 @@ resource "aws_lambda_permission" "sns_invoke_slack" {
   source_arn    = aws_sns_topic.alerts.arn
 }
 
-# -------------------------------------------------------------------------
 # EventBridge — disparo diario a las 08:30 UTC
-# -------------------------------------------------------------------------
 resource "aws_cloudwatch_event_rule" "daily_trigger" {
   name                = "${local.prefix}-daily-trigger"
   description         = "Dispara file_checker a las 08:30 UTC para verificar archivo en S3 Bronze"
@@ -163,10 +155,9 @@ resource "aws_lambda_permission" "eventbridge_invoke_checker" {
   source_arn    = aws_cloudwatch_event_rule.daily_trigger.arn
 }
 
-# -------------------------------------------------------------------------
+
 # EventBridge — alertas de fallo en Glue Jobs
 # Captura cualquier job en estado FAILED/TIMEOUT/ERROR y publica en SNS.
-# -------------------------------------------------------------------------
 resource "aws_cloudwatch_event_rule" "glue_failure" {
   name        = "${local.prefix}-glue-failure"
   description = "Captura fallos de Glue Jobs y los enruta a SNS"
@@ -186,9 +177,7 @@ resource "aws_cloudwatch_event_target" "glue_failure_sns" {
   arn       = aws_sns_topic.alerts.arn
 }
 
-# -------------------------------------------------------------------------
 # CloudWatch Alarm — fallos en Step Functions
-# -------------------------------------------------------------------------
 resource "aws_cloudwatch_metric_alarm" "sfn_failures" {
   alarm_name          = "${local.prefix}-sfn-failures"
   comparison_operator = "GreaterThanThreshold"
@@ -206,9 +195,7 @@ resource "aws_cloudwatch_metric_alarm" "sfn_failures" {
   }
 }
 
-# -------------------------------------------------------------------------
 # CloudWatch Log Groups — retención explícita
-# -------------------------------------------------------------------------
 resource "aws_cloudwatch_log_group" "glue_silver" {
   name              = "/aws-glue/${local.prefix}-silver-job"
   retention_in_days = 30
