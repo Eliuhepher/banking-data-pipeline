@@ -13,6 +13,13 @@ on:
       - 'terraform/jobs/**'
       - 'glue_jobs/**'
       - 'step_functions/**'
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'plan o apply'
+        type: choice
+        options: [plan, apply]
+        default: plan
 
 permissions:
   id-token: write
@@ -45,7 +52,7 @@ jobs:
       # --- Upload artifacts to S3 config bucket ---
       # Solo en push a main para evitar subir en PRs
       - name: Upload Glue scripts and zips to S3
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.action == 'apply')
         run: |
           CONFIG_BUCKET="${{ vars.CONFIG_BUCKET }}"
 
@@ -94,6 +101,6 @@ jobs:
             -out=tfplan
 
       - name: Terraform Apply
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.action == 'apply')
         working-directory: terraform/jobs
         run: terraform apply -auto-approve tfplan

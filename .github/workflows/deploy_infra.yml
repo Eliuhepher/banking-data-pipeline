@@ -9,6 +9,13 @@ on:
   pull_request:
     paths:
       - 'terraform/infra/**'
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'plan o apply'
+        type: choice
+        options: [plan, apply]
+        default: plan
 
 permissions:
   id-token: write
@@ -51,6 +58,6 @@ jobs:
             -out=tfplan
 
       - name: Terraform Apply
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.action == 'apply')
         working-directory: terraform/infra
         run: terraform apply -auto-approve tfplan

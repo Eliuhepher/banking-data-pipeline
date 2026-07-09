@@ -115,6 +115,7 @@ resource "aws_redshiftserverless_namespace" "main" {
   db_name             = var.redshift_database
   admin_username      = "admin"
   admin_user_password = var.redshift_admin_password
+  iam_roles           = [aws_iam_role.glue.arn]
   tags                = local.common_tags
 }
 
