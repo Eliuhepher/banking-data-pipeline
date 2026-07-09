@@ -41,14 +41,24 @@ def read_csv(
     encoding: str = "utf-8",
     infer_schema: bool = False,
 ) -> DataFrame:
-    return (
+    # Spark/Java no soporta utf-8-sig; traducir a UTF-8 y limpiar BOM de cabeceras
+    _BOM_ALIASES = {"utf-8-sig", "utf-8-bom"}
+    strip_bom = encoding.lower() in _BOM_ALIASES
+    spark_encoding = "UTF-8" if strip_bom else encoding
+
+    df = (
         spark.read.format("csv")
         .option("header", "true")
         .option("sep", delimiter)
-        .option("encoding", encoding)
+        .option("encoding", spark_encoding)
         .option("inferSchema", str(infer_schema).lower())
         .load(uri)
     )
+
+    if strip_bom:
+        df = df.toDF(*[c.lstrip("﻿") for c in df.columns])
+
+    return df
 
 
 def write_parquet(
