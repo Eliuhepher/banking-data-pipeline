@@ -95,4 +95,5 @@ def copy_from_s3(
 
 
 def truncate_table(workgroup: str, database: str, table: str) -> None:
-    execute_sql(workgroup, database, f"TRUNCATE TABLE {table}")
+    # TRUNCATE requiere ownership; DELETE funciona con privilegio GRANT DELETE
+    execute_sql(workgroup, database, f"DELETE FROM {table}")
