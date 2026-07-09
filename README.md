@@ -180,25 +180,43 @@ Después de que `deploy_infra` corra, actualizar las variables de GitHub con los
 
 ### Paso 3 — DDL en Redshift
 
-Ejecutar los scripts DDL en orden contra el workgroup de Redshift Serverless (desde Query Editor v2 en la consola AWS o con el CLI):
+Ejecutar los scripts DDL en orden contra el workgroup de Redshift Serverless, autenticando siempre como `admin` vía `--secret-arn` (el ARN del secret `REDSHIFT_ADMIN_PASSWORD` creado en `terraform/infra`). Sin `--secret-arn`, la Data API autentica con la identidad IAM del caller en vez de `admin`, y el `CREATE SCHEMA`/`CREATE TABLE` queda con un dueño distinto al esperado:
 
 ```bash
-# Usando Redshift Data API vía CLI
-aws redshift-data execute-statement \
-  --workgroup-name banking-pipeline-dev-wg \
-  --database banking \
-  --sql "$(cat sql/ddl/01_control.sql)"
+SECRET_ARN=$(aws secretsmanager list-secrets \
+  --filters Key=name,Values=banking-pipeline-dev/redshift/admin \
+  --query 'SecretList[0].ARN' --output text)
 
-aws redshift-data execute-statement \
-  --workgroup-name banking-pipeline-dev-wg \
-  --database banking \
-  --sql "$(cat sql/ddl/02_dimensions.sql)"
-
-aws redshift-data execute-statement \
-  --workgroup-name banking-pipeline-dev-wg \
-  --database banking \
-  --sql "$(cat sql/ddl/03_fact.sql)"
+for f in sql/ddl/01_control.sql sql/ddl/02_dimensions.sql sql/ddl/03_fact.sql; do
+  aws redshift-data execute-statement \
+    --workgroup-name banking-pipeline-dev-wg \
+    --database banking \
+    --secret-arn "$SECRET_ARN" \
+    --sql "$(cat "$f")"
+done
 ```
+
+### Paso 3.1 — Permisos del rol de Glue en Redshift
+
+El job Gold se conecta a Redshift vía IAM (Redshift Data API), no con `admin`. Redshift Serverless auto-crea el usuario `IAMR:banking-pipeline-dev-glue-role` en su primer intento de conexión, pero sin privilegios: hay que otorgarlos explícitamente sobre los schemas `control` y `dw`, dueños de `admin`. Igual que en el paso anterior, esto debe correr con `--secret-arn` (si se corre con la identidad IAM del caller, el `GRANT` falla con `permission denied for schema ...` porque esa identidad no es dueña del schema):
+
+```bash
+for schema in control dw; do
+  aws redshift-data execute-statement \
+    --workgroup-name banking-pipeline-dev-wg \
+    --database banking \
+    --secret-arn "$SECRET_ARN" \
+    --sql "GRANT USAGE ON SCHEMA $schema TO \"IAMR:banking-pipeline-dev-glue-role\";"
+
+  aws redshift-data execute-statement \
+    --workgroup-name banking-pipeline-dev-wg \
+    --database banking \
+    --secret-arn "$SECRET_ARN" \
+    --sql "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA $schema TO \"IAMR:banking-pipeline-dev-glue-role\";"
+done
+```
+
+`ON ALL TABLES` solo cubre las tablas que ya existen al momento del GRANT — si se agrega una tabla nueva a `control` o `dw` (nuevo DDL), hay que repetir el segundo `GRANT` para esa tabla o correr este bloque de nuevo.
 
 ### Paso 4 — Ejecutar el pipeline
 
