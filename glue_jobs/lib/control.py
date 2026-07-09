@@ -53,7 +53,8 @@ def start_run(run: PipelineRun) -> int:
 def finish_run(run: PipelineRun) -> None:
     wi = f"'{run.watermark_inicio}'" if run.watermark_inicio else "NULL"
     wf = f"'{run.watermark_fin}'"    if run.watermark_fin    else "NULL"
-    em = f"'{run.error_msg[:1990]}'" if run.error_msg        else "NULL"
+    error_escaped = run.error_msg.replace("'", "''") if run.error_msg else None
+    em = f"'{error_escaped[:1990]}'" if error_escaped        else "NULL"
 
     execute_sql(
         run.workgroup,
