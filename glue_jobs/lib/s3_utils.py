@@ -66,14 +66,8 @@ def write_parquet(
     base_uri: str,
     partition_keys: List[str],
     mode: str = "overwrite",
-) -> int:
-    (
-        df.write.format("parquet")
-        .mode(mode)
-        .partitionBy(*partition_keys)
-        .save(base_uri)
-    )
-    return df.count()
+) -> None:
+    df.write.mode(mode).partitionBy(*partition_keys).parquet(base_uri)
 
 
 def read_parquet(spark: SparkSession, uri: str) -> DataFrame:

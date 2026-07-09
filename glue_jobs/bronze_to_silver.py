@@ -109,9 +109,17 @@ try:
     run.registros_validos    = metrics["registros_validos"]
     run.registros_rechazados = metrics["registros_rechazados"]
 
-    if rejected_df.count() > 0:
-        rejected_uri = f"s3://{args['SILVER_BUCKET']}/_rejected/{source_name}/year={year}/month={month}/day={day}/"
-        s3_utils.write_parquet(rejected_df, rejected_uri, schema_config.partition_keys)
+    n_rejected = run.registros_rechazados
+    if n_rejected > 0:
+        rejected_uri = (
+            f"s3://{args['SILVER_BUCKET']}/_rejected/{source_name}"
+            f"/year={year}/month={month}/day={day}/"
+        )
+        # Cast a string para evitar conflictos de tipo en Parquet con valores null
+        rejected_str = rejected_df.select(
+            [F.col(c).cast("string").alias(c) for c in rejected_df.columns]
+        )
+        rejected_str.coalesce(1).write.mode("overwrite").parquet(rejected_uri)
 
     s3_utils.write_parquet(valid_df, silver_uri, schema_config.partition_keys)
 
