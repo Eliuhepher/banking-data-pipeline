@@ -44,6 +44,10 @@ resource "aws_glue_job" "ingest" {
     "--SOURCE_NAME" = "transacciones"
     "--BRONZE_BUCKET" = var.bronze_bucket
   })
+
+  execution_property {
+    max_concurrent_runs = 3
+  }
 }
 
 
@@ -71,6 +75,10 @@ resource "aws_glue_job" "silver" {
     "--REDSHIFT_WORKGROUP" = var.redshift_workgroup
     "--REDSHIFT_DATABASE"  = var.redshift_database
   })
+
+  execution_property {
+    max_concurrent_runs = 5
+  }
 }
 
 
@@ -99,6 +107,10 @@ resource "aws_glue_job" "gold" {
     "--REDSHIFT_IAM_ROLE"  = var.glue_role_arn
     "--AWS_REGION"         = var.aws_region
   })
+
+  execution_property {
+    max_concurrent_runs = 5
+  }
 }
 
 
