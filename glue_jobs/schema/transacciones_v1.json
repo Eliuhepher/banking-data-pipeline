@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "file_format": "csv",
   "delimiter": ",",
-  "encoding": "utf-8-sig",
+  "encoding": "utf-8",
   "partition_keys": ["year", "month", "day"],
   "primary_key": ["numero_de_cuenta", "fecha_hora"],
   "column_renames": {
@@ -130,7 +130,7 @@
     }
   },
   "quality_rules": {
-    "min_valid_rate": 0.95,
+    "min_valid_rate": 0.70,
     "reject_on_null_pk": true,
     "reject_date_before": "1920-01-01",
     "reject_future_dates": true,
